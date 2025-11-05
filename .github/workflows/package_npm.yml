@@ -1,4 +1,4 @@
-name: Publish NuGet Package
+name: Publish NPM Package
 
 on:
   push:
@@ -81,7 +81,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           # Elimina "private" y cambia nombre y versión
-          jq 'del(.private) | .name = "@${{ github.repository_owner }}/notifications_salas" | .version = "0.0.0-" + (env.GITHUB_RUN_NUMBER|tostring)' package.json > package.temp.json
+          jq 'del(.private) | .name = "@${{ github.repository_owner }}/notifications_cuadros" | .version = "0.0.0-" + (env.GITHUB_RUN_NUMBER|tostring)' package.json > package.temp.json
           mv package.temp.json package.json
           npm ci || npm install
           echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
@@ -97,7 +97,7 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          jq 'del(.private) | .name = "@${{ github.repository_owner }}/customer-app_salas" | .version = "0.0.0-" + (env.GITHUB_RUN_NUMBER|tostring)' package.json > package.temp.json
+          jq 'del(.private) | .name = "@${{ github.repository_owner }}/customer-app_cuadros" | .version = "0.0.0-" + (env.GITHUB_RUN_NUMBER|tostring)' package.json > package.temp.json
           mv package.temp.json package.json
           npm ci || npm install
           echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc

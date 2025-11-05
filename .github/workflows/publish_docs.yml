@@ -1,0 +1,126 @@
+name: 📘 Publish Documentation (Both)
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy-docs:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies (customer-app)
+        run: npm install
+        working-directory: ./customer-app
+
+      - name: 📦 Install dependencies (notifications)
+        run: npm install
+        working-directory: ./notifications
+
+      - name: 🏗️ Generate docs (customer-app)
+        run: npx @compodoc/compodoc -p tsconfig.json -d documentation
+        working-directory: ./customer-app
+
+      - name: 🏗️ Generate docs (notifications)
+        run: npx @compodoc/compodoc -p tsconfig.json -d documentation
+        working-directory: ./notifications
+
+      - name: 🧱 Combine documentation folders
+        run: |
+          mkdir -p documentation
+          if [ -d "notifications/documentation" ]; then
+            mv notifications/documentation documentation/notifications
+          fi
+          if [ -d "customer-app/documentation" ]; then
+            mv customer-app/documentation documentation/customer-app
+          fi
+
+      - name: 🎨 Create styled index.html
+        run: |
+          cat > documentation/index.html << 'HTML'
+          <!DOCTYPE html>
+          <html lang="es">
+          <head>
+              <meta charset="UTF-8">
+              <meta name="viewport" content="width=device-width, initial-scale=1.0">
+              <title>📚 Documentación del Proyecto</title>
+              <style>
+                  body {
+                      margin: 0;
+                      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+                      background: linear-gradient(135deg, #6d79aeff 0%, #1b2468ff 100%);
+                      color: #908b8bff;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      min-height: 100vh;
+                  }
+                  .container {
+                      background: white;
+                      border-radius: 15px;
+                      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                      padding: 40px;
+                      width: 90%;
+                      max-width: 700px;
+                      text-align: center;
+                  }
+                  h1 {
+                      color: #4c4c4c;
+                      font-size: 2em;
+                      margin-bottom: 30px;
+                  }
+                  .links {
+                      display: flex;
+                      flex-direction: column;
+                      gap: 20px;
+                  }
+                  a {
+                      display: block;
+                      text-decoration: none;
+                      color: #fff;
+                      background: linear-gradient(90deg, #8a96caff, #213785ff);
+                      padding: 15px 20px;
+                      border-radius: 10px;
+                      font-weight: bold;
+                      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                      transition: all 0.3s ease;
+                  }
+                  a:hover {
+                      transform: translateY(-3px);
+                      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+                  }
+                  footer {
+                      margin-top: 30px;
+                      font-size: 0.9em;
+                      color: #666;
+                  }
+              </style>
+          </head>
+          <body>
+              <div class="container">
+                  <h1>📘 Documentación del Proyecto</h1>
+                  <div class="links">
+                      <a href="./customer-app/index.html">👥 Customer App Docs</a>
+                      <a href="./notifications/index.html">📨 Notifications Docs</a>
+                  </div>
+                  <footer>Generado automáticamente con Compodoc y GitHub Actions 🚀</footer>
+              </div>
+          </body>
+          </html>
+          HTML
+
+      - name: 🚀 Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./documentation

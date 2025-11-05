@@ -1,0 +1,105 @@
+name: Publish NuGet Package
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      
+# This workflow handles nuget publishing
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies needed on runner
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      # ---------------------
+      # 🔹 Notifications
+      # ---------------------
+      - name: Run tests and collect coverage (notifications)
+        working-directory: notifications
+        run: |
+          npm ci || npm install
+          npm run test:cov
+
+      - name: Upload test results (notifications)
+        uses: actions/upload-artifact@v4
+        with:
+          name: notifications-test-results
+          path: notifications/coverage
+
+      # ---------------------
+      # 🔹 Customer-App
+      # ---------------------
+      - name: Run tests and collect coverage (customer-app)
+        working-directory: customer-app
+        run: |
+          npm ci || npm install
+          npm run test:cov
+
+      - name: Upload test results (customer-app)
+        uses: actions/upload-artifact@v4
+        with:
+          name: customer-app-test-results
+          path: customer-app/coverage
+
+      # ---------------------
+      # 🔹 SonarCloud Scan
+      # ---------------------
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@v2
+        with:
+          projectBaseDir: .
+          args: >
+            -Dsonar.organization=72943816s
+            -Dsonar.projectKey=72943816s_si889-u2lab02nest
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      # ---------------------
+      # 🔹 Publish Notifications
+      # ---------------------
+      - name: Prepare and publish notifications package
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        working-directory: notifications
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Elimina "private" y cambia nombre y versión
+          jq 'del(.private) | .name = "@${{ github.repository_owner }}/notifications_salas" | .version = "0.0.0-" + (env.GITHUB_RUN_NUMBER|tostring)' package.json > package.temp.json
+          mv package.temp.json package.json
+          npm ci || npm install
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+          echo "registry=https://registry.npmjs.org/" >> ~/.npmrc
+          npm publish --access=restricted --registry=https://npm.pkg.github.com/
+
+      # ---------------------
+      # 🔹 Publish Customer-App
+      # ---------------------
+      - name: Prepare and publish customer-app package
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        working-directory: customer-app
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          jq 'del(.private) | .name = "@${{ github.repository_owner }}/customer-app_salas" | .version = "0.0.0-" + (env.GITHUB_RUN_NUMBER|tostring)' package.json > package.temp.json
+          mv package.temp.json package.json
+          npm ci || npm install
+          echo "//npm.pkg.github.com/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+          echo "registry=https://registry.npmjs.org/" >> ~/.npmrc
+          npm publish --access=restricted --registry=https://npm.pkg.github.com/

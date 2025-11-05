@@ -1,0 +1,54 @@
+name: 🚀 Release Version (Customer App & Notifications)
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Solo se dispara cuando haces push de tags que cumplan el patrón
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1️⃣ Clonar el repositorio
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Configurar Node.js
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      # 3️⃣ Customer App: Instalar dependencias y construir
+      - name: Install dependencies (customer-app)
+        working-directory: ./customer-app
+        run: npm ci
+
+      - name: Build customer-app
+        working-directory: ./customer-app
+        run: npm run build
+
+      # 4️⃣ Notifications: Instalar dependencias y construir
+      - name: Install dependencies (notifications)
+        working-directory: ./notifications
+        run: npm ci
+
+      - name: Build notifications
+        working-directory: ./notifications
+        run: npm run build
+
+      # 5️⃣ Crear el release en GitHub
+      - name: Create GitHub Release
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          body: |
+            🚀 Release notes for version ${{ github.ref }}
+          files: |
+            customer-app/dist/**/*   # Artefactos compilados del customer-app
+            notifications/dist/**/*  # Artefactos compilados de notifications
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,71 @@
+name: Publish Documentation
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'notifications/**'
+      - 'customer-app/**'
+      - '.github/workflows/publish_docs.yml'
+  workflow_dispatch:
+
+jobs:
+  publish-notifications-docs:
+    name: Publish Notifications Documentation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./notifications
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate documentation
+        run: npx @compodoc/compodoc -p tsconfig.json -d documentation
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./notifications/documentation
+          destination_dir: notifications
+
+  publish-customer-app-docs:
+    name: Publish CustomerApp Documentation
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./customer-app
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate documentation
+        run: npx @compodoc/compodoc -p tsconfig.json -d documentation
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./customer-app/documentation
+          destination_dir: customer-app
+

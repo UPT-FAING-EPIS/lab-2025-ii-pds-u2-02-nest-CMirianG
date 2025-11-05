@@ -1,0 +1,120 @@
+name: Package NPM
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'notifications/**'
+      - 'customer-app/**'
+      - '.github/workflows/package_npm.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'notifications/**'
+      - 'customer-app/**'
+      - '.github/workflows/package_npm.yml'
+  workflow_dispatch:
+
+jobs:
+  test-and-package-notifications:
+    name: Test and Package Notifications
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./notifications
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@cmiriang'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:cov
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./notifications/coverage/lcov.info
+          flags: notifications
+          name: notifications-coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Build package
+        run: npm run build
+
+      - name: Update package.json name
+        run: |
+          npm pkg set name=notifications_cuadros
+          npm pkg set version=0.0.1
+
+      - name: Publish to GitHub Packages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  test-and-package-customer-app:
+    name: Test and Package CustomerApp
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./customer-app
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@cmiriang'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests with coverage
+        run: npm run test:cov
+
+      - name: Upload coverage reports
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./customer-app/coverage/lcov.info
+          flags: customer-app
+          name: customer-app-coverage
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Build package
+        run: npm run build
+
+      - name: Update package.json name
+        run: |
+          npm pkg set name=customer-app_cuadros
+          npm pkg set version=0.0.1
+
+      - name: Publish to GitHub Packages
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+

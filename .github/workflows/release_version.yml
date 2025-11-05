@@ -1,0 +1,160 @@
+name: Release Version
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 1.0.0)'
+        required: true
+        type: string
+
+jobs:
+  release-notifications:
+    name: Release Notifications Package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./notifications
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@cmiriang'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update package.json version
+        run: |
+          npm pkg set name=notifications_cuadros
+          npm pkg set version=${{ steps.get_version.outputs.VERSION }}
+
+      - name: Build package
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test:cov
+
+      - name: Create release package
+        run: |
+          mkdir -p dist-package
+          cp -r dist libs package.json package-lock.json README.md dist-package/
+          cd dist-package
+          npm pack
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./notifications/dist-package/*.tgz
+          tag_name: notifications-v${{ steps.get_version.outputs.VERSION }}
+          name: Notifications v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            Release version ${{ steps.get_version.outputs.VERSION }} of Notifications package.
+            
+            ## Changes
+            - Bridge Design Pattern implementation
+            - Complete documentation
+            - Unit tests with coverage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to GitHub Packages
+        run: |
+          cd dist-package
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  release-customer-app:
+    name: Release CustomerApp Package
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./customer-app
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21'
+          registry-url: 'https://npm.pkg.github.com'
+          scope: '@cmiriang'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Get version from tag
+        id: get_version
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "VERSION=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            VERSION=${GITHUB_REF#refs/tags/v}
+            echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Update package.json version
+        run: |
+          npm pkg set name=customer-app_cuadros
+          npm pkg set version=${{ steps.get_version.outputs.VERSION }}
+
+      - name: Build package
+        run: npm run build
+
+      - name: Run tests
+        run: npm run test:cov
+
+      - name: Create release package
+        run: |
+          mkdir -p dist-package
+          cp -r dist libs package.json package-lock.json README.md dist-package/
+          cd dist-package
+          npm pack
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: ./customer-app/dist-package/*.tgz
+          tag_name: customer-app-v${{ steps.get_version.outputs.VERSION }}
+          name: CustomerApp v${{ steps.get_version.outputs.VERSION }}
+          body: |
+            Release version ${{ steps.get_version.outputs.VERSION }} of CustomerApp package.
+            
+            ## Changes
+            - Facade Design Pattern implementation
+            - Complete documentation
+            - Unit tests with coverage
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish to GitHub Packages
+        run: |
+          cd dist-package
+          npm publish
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
